@@ -31,9 +31,9 @@ if not os.path.exists(out_dir):
 with open(args.data, 'r') as fin, open(out_file_path, 'w') as fout:
     headerline = next(fin).strip()
     header = {col:i for i, col in enumerate(headerline.split('\t'))}
-	if args.include_header:
-		fout.write(headerline+'\n')
-    for i, line in enumerate(tqdm(fin, total=5010)):
+    if args.include_header:
+    	fout.write(headerline+'\n')
+    for line in tqdm(fin, total=5010):
         en_cells = line.split('\t')
         for lg in tqdm(translators.keys()):
             if lg in {'en','fr','es','de','zh','el','bg','ru','tr','ar','vi','th','hi','ur','sw'}:

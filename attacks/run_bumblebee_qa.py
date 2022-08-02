@@ -57,10 +57,9 @@ def _create_output_data(questions, input_data_path):
 def get_examples(data_path):
     input_data = json.load(open(data_path))
     examples = []
-    for i, article in enumerate(input_data['data']):
-        for j, paragraph in enumerate(article['paragraphs']):
-            for k, qa in enumerate(paragraph['qas']):
-                examples.append((qa, paragraph['context']))
+    for article in input_data['data']:
+        for paragraph in article['paragraphs']:
+            examples.extend((qa, paragraph['context']) for qa in paragraph['qas'])
     return examples
 
 
@@ -92,8 +91,15 @@ len_per_batch = ceil(total_exs / num_actors)
 batches = [examples[i:i+len_per_batch] for i in range(0, total_exs, len_per_batch)]
 
 ray.init()
-actors = ActorPool([PolyglotActor.remote(args.model, SRC_LANG, TGT_LANGS, reference_translations)
-                   for i in range(num_actors)])
+actors = ActorPool(
+    [
+        PolyglotActor.remote(
+            args.model, SRC_LANG, TGT_LANGS, reference_translations
+        )
+        for _ in range(num_actors)
+    ]
+)
+
 
 
 start = time.time()
@@ -102,15 +108,15 @@ time_taken = time.time() - start
 results = {'highest': {qid: ex for batch in results for qid, ex in batch['highest'].items()},
            'lowest': {qid: ex for batch in results for qid, ex in batch['lowest'].items()}}
 
-print("F1:", str(sum(scores)/total_exs * 100))
+print("F1:", sum(scores)/total_exs * 100)
 print("Time taken:", time_taken / 60)
-print("Output: ", str(output_path))
+print("Output: ", output_path)
 output_path.mkdir(parents=True, exist_ok=True)
 
 for loss in ['highest', 'lowest']:
-    with open(output_file+'.'+loss+'.json', 'w') as outf:
+    with open(f'{output_file}.{loss}.json', 'w') as outf:
         json.dump(_create_output_data(results[loss], args.data), outf, ensure_ascii=False, indent=4)
 
 with open(str(Path(output_path, 'results.txt')), 'w') as t:
-    t.write('F1: '+str(sum(scores)/total_exs * 100)+'\n')
-    t.write("Time taken: "+str(time_taken / 60)+'\n')
+    t.write(f'F1: {str(sum(scores)/total_exs * 100)}' + '\n')
+    t.write(f"Time taken: {str(time_taken / 60)}" + '\n')

@@ -38,10 +38,10 @@ class PolyglotActor(object):
             hypo_refs = self.reference_translations[1][example.text_b] if self.reference_translations else None
             refs = [prem_refs, hypo_refs]
             prem, hypo, text_label, _, lowest_prem, lowest_hypo, lowest_text_label = self.polyglot.generate(example.text_a,
-			                                                                                                example.text_b,
-			                                                                                                example.label,
-			                                                                                                beam_size=beam,
-			                                                                                                reference_translations=refs)
+    			                                                                                            example.text_b,
+    			                                                                                            example.label,
+    			                                                                                            beam_size=beam,
+    			                                                                                            reference_translations=refs)
             if text_label != example.label:
                 example.text_a = prem
                 example.text_b = hypo
@@ -108,8 +108,21 @@ TGT_LANGS = args.tgt_langs.split(',')
 reference_translations = None
 refs_var = 'no_ref'
 if args.use_reference_translations:
-    reference_translations = [json.load(open('../dictionaries/xnli-'+args.split+'-sentence1-reference-translations-en-head.json','r')),
-                              json.load(open('../dictionaries/xnli-'+args.split+'-sentence2-reference-translations-en-head.json','r'))]
+    reference_translations = [
+        json.load(
+            open(
+                f'../dictionaries/xnli-{args.split}-sentence1-reference-translations-en-head.json',
+                'r',
+            )
+        ),
+        json.load(
+            open(
+                f'../dictionaries/xnli-{args.split}-sentence2-reference-translations-en-head.json',
+                'r',
+            )
+        ),
+    ]
+
     refs_var = 'ref_constrained'
 
 output_path = Path(args.output_dir,
@@ -121,20 +134,23 @@ output_path = Path(args.output_dir,
                     '.' + refs_var)
 output_path.mkdir(parents=True, exist_ok=True)
 
-output_file = args.split + '_'
-if args.mm:
-    output_file += 'mismatched'
-else:
-    output_file += 'matched'
+output_file = f'{args.split}_'
+output_file += 'mismatched' if args.mm else 'matched'
 output_file += '.tsv'
 output_file = str(Path(output_path, output_file))
 print('Output file path:', output_file)
 
 if args.mm:
-    input_tsv = processors['mnli-mm']()._read_tsv(args.data+'/'+args.split +'_mismatched.tsv')
+    input_tsv = processors['mnli-mm']()._read_tsv(
+        f'{args.data}/{args.split}_mismatched.tsv'
+    )
+
     examples = get_examples(args.data, 'mnli-mm', args.split)
 else:
-    input_tsv = processors['mnli']()._read_tsv(args.data+'/'+args.split +'_matched.tsv')
+    input_tsv = processors['mnli']()._read_tsv(
+        f'{args.data}/{args.split}_matched.tsv'
+    )
+
     examples = get_examples(args.data, 'mnli', args.split)
 
 if args.simplified_zh:
@@ -153,18 +169,25 @@ len_per_batch = ceil(total_exs / num_actors)
 batches = [examples[i:i+len_per_batch] for i in range(0, total_exs, len_per_batch)]
 
 ray.init()
-actors = ActorPool([PolyglotActor.remote(args.model, SRC_LANG, TGT_LANGS, word_map, reference_translations)
-                   for i in range(num_actors)])
+actors = ActorPool(
+    [
+        PolyglotActor.remote(
+            args.model, SRC_LANG, TGT_LANGS, word_map, reference_translations
+        )
+        for _ in range(num_actors)
+    ]
+)
+
 start = time.time()
 results, scores = map(list, zip(*actors.map(lambda actor, batch: actor.mutate.remote(batch, args.beam), batches)))
 time_taken = time.time() - start
 results = [ex for batch in results for ex in batch]
 
-print("Acc:", str(sum(scores)/total_exs * 100))
+print("Acc:", sum(scores)/total_exs * 100)
 print("Time taken:", time_taken / 60)
-print("Output: ", str(output_path))
+print("Output: ", output_path)
 
 _write_tsv(_create_output_data(results, input_tsv), output_file)
 with open(str(Path(output_path, 'time_taken.txt')), 'w') as t:
-    t.write('Acc: '+str(sum(scores)/total_exs * 100)+'\n')
-    t.write("Time taken:"+str(time_taken / 60))
+    t.write(f'Acc: {str(sum(scores)/total_exs * 100)}' + '\n')
+    t.write(f"Time taken:{str(time_taken / 60)}")

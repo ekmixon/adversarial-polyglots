@@ -20,9 +20,7 @@ def normalize_answer(s):
 
 
 def get_tokens(s):
-    if not s:
-        return []
-    return normalize_answer(s).split()
+    return normalize_answer(s).split() if s else []
 
 
 def compute_exact(a_gold, a_pred):
@@ -40,8 +38,7 @@ def compute_f1(a_gold, a_pred):
         return 0
     precision = 1.0 * num_same / len(pred_toks)
     recall = 1.0 * num_same / len(gold_toks)
-    f1 = (2 * precision * recall) / (precision + recall)
-    return f1
+    return (2 * precision * recall) / (precision + recall)
 
 
 def metric_max(metric, pred, labels):

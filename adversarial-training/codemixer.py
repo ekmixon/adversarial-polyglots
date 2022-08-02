@@ -44,7 +44,7 @@ class CodeMixer(object):
         return grouped_phrases
 
     def swap_phrase(self, tokens, replace_start_idx, replace_end_idx, to_replace):
-        return tokens[0:replace_start_idx] + [to_replace] + tokens[replace_end_idx:]
+        return tokens[:replace_start_idx] + [to_replace] + tokens[replace_end_idx:]
 
     def get_weights(self, lg_counts):
         filtered_lg_counts = {k: v for k,v in lg_counts.items() if k in self.embedded_lgs or k == self.matrix_lg}

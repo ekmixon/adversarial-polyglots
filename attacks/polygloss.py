@@ -203,10 +203,7 @@ class PolyglossPairSequenceClassificationHF(PolyglossPairSequenceClassification)
                  is_nli=False,
                  use_cuda=True):
         super().__init__(source_lg, target_lgs, map_path, labels)
-        if torch.cuda.is_available() and use_cuda:
-            self.device = 'cuda'
-        else:
-            self.device = 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() and use_cuda else 'cpu'
         config = AutoConfig.from_pretrained(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         if is_nli and self.tokenizer.__class__ in (RobertaTokenizer,

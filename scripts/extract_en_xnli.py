@@ -16,7 +16,7 @@ with open(args.data, 'r') as fin, open(out_file_path, 'w') as fout:
     headerline = next(fin)
     fout.write(headerline)
     header = {col:i for i, col in enumerate(headerline.strip().split('\t'))}
-    for i, line in enumerate(fin):
+    for line in fin:
         cells = line.split('\t')
         if cells[header['language']] == LG:
             fout.write(line)

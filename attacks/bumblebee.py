@@ -53,10 +53,14 @@ class BumblebeeBase(metaclass=ABCMeta):
 
 
     def swap_phrase_simple(self, sentence, to_be_replaced, to_replace):
-        return (' ' + sentence + ' ').replace(' ' + to_be_replaced + ' ', ' ' + to_replace + ' ', 1).strip()
+        return f' {sentence} '.replace(
+            f' {to_be_replaced} ', f' {to_replace} ', 1
+        ).strip()
 
     def swap_phrase(self, tokens, replace_start_idx, replace_end_idx, to_replace):
-        return ' '.join(tokens[0:replace_start_idx] + [to_replace] + tokens[replace_end_idx:])
+        return ' '.join(
+            tokens[:replace_start_idx] + [to_replace] + tokens[replace_end_idx:]
+        )
 
 
     def swap_phrase_w_split_bwd(self, sentence, split_pos, to_be_replaced, to_replace):
@@ -64,7 +68,12 @@ class BumblebeeBase(metaclass=ABCMeta):
         back = ' '.join(tokenized[split_pos:])
         front_tok = tokenized[:split_pos]
 
-        new_back_tok = (' ' + back + ' ').replace(' ' + to_be_replaced + ' ', ' ' + to_replace + ' ', 1).strip().split()
+        new_back_tok = (
+            f' {back} '.replace(f' {to_be_replaced} ', f' {to_replace} ', 1)
+            .strip()
+            .split()
+        )
+
 
         return ' '.join(front_tok + new_back_tok)
 
@@ -168,7 +177,7 @@ class BumblebeePairSequenceClassification(BumblebeeBase):
         early_terminate_flag = False
         while curr_beam and (not early_terminate or not early_terminate_flag):
             for prev_loss, curr_pos1, curr_pos2, prev_predicted, prev_s1, prev_s2, prev_lg1, \
-                prev_s1_replacement_pos, prev_lg2, prev_s2_replacement_pos, lg_counts in curr_beam:
+                    prev_s1_replacement_pos, prev_lg2, prev_s2_replacement_pos, lg_counts in curr_beam:
 
                 prev_s1_tokens = prev_s1.split()
                 prev_s2_tokens = prev_s2.split()
@@ -271,10 +280,7 @@ class BumblebeePairSequenceClassificationHF(BumblebeePairSequenceClassification)
                  use_cuda=True,
                  transliteration_map: Dict[str,str]=None):
         super().__init__(source_lg, target_lgs, labels, transliteration_map=transliteration_map)
-        if torch.cuda.is_available() and use_cuda:
-            self.device = 'cuda'
-        else:
-            self.device = 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() and use_cuda else 'cpu'
         config = AutoConfig.from_pretrained(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         if is_nli and self.tokenizer.__class__ in (RobertaTokenizer,

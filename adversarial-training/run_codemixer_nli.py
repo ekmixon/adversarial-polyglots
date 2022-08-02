@@ -38,7 +38,7 @@ TOP_UP = 0 # Increase this value if number of generated examples is insufficient
 @ray.remote(num_gpus=NUM_GPU_PER_ACTOR)
 class CodemixActor(object):
     def __init__(self, mtx_lg, emb_lgs, lg_counts, device, actor_id, reference_translations=None):
-        print(str(actor_id) + ' spawned')
+        print(f'{str(actor_id)} spawned')
         if args.phrase_alignments:
             self.mixer = CodeMixer(mtx_lg, emb_lgs, device, True)
         else:
@@ -67,22 +67,26 @@ class CodemixActor(object):
             adjusted_k = k+1 if top_up > 0 else k
 
             while len(results_set) < adjusted_k and num_tries < k*50:
-                result = {}
                 example['sentence1_phrases'] = {int(k): v for k,v in example['sentence1_phrases'].items()}
                 example['sentence2_phrases'] = {int(k): v for k,v in example['sentence2_phrases'].items()}
 
-                result['sentence1'] = self.mixer.generate_precomputed_alignments(example['sentence1'],
-                                                                                 example['sentence1_phrases'],
-                                                                                 args.perturb_prob)
+                result = {
+                    'sentence1': self.mixer.generate_precomputed_alignments(
+                        example['sentence1'],
+                        example['sentence1_phrases'],
+                        args.perturb_prob,
+                    )
+                }
+
                 result['sentence1'] = result['sentence1'].replace(' ,', ',').replace(' .', '.')\
-                                                         .replace(" '", "'").replace('( ', '(')\
-                                                         .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
+                                                             .replace(" '", "'").replace('( ', '(')\
+                                                             .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
                 result['sentence2'] = self.mixer.generate_precomputed_alignments(example['sentence2'],
                                                                                  example['sentence2_phrases'],
                                                                                  args.perturb_prob)
                 result['sentence2'] = result['sentence2'].replace(' ,', ',').replace(' .', '.')\
-                                                         .replace(" '", "'").replace('( ', '(')\
-                                                         .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
+                                                             .replace(" '", "'").replace('( ', '(')\
+                                                             .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
                 result['gold_label'] = example['gold_label']
                 if result['sentence1'] != example['sentence1'] or result['sentence2'] != example['sentence2']:
                     result['preserved'] = 0
@@ -124,10 +128,7 @@ class CodemixActor(object):
                 text_b_phrases = self.mixer.get_phrases(example.text_b, self.refs[1][example.text_b], chosen_lgs)
             if example.label == 'contradictory':
                 example.label = 'contradiction'
-            if text_a_phrases or text_b_phrases:
-                preserved = 0
-            else:
-                preserved = 1
+            preserved = 0 if text_a_phrases or text_b_phrases else 1
             results.append({'sentence1': example.text_a, 'sentence2': example.text_b,
                             'sentence1_phrases': text_a_phrases, 'sentence2_phrases': text_b_phrases,
                             'preserved': preserved, 'gold_label': example.label})
@@ -159,16 +160,28 @@ def get_examples(data_dir, split):
 def get_examples_w_phrases(data_file):
     examples = []
     with jsonlines.open(data_file, mode='r') as reader:
-        for example in reader:
-            examples.append(example)
+        examples.extend(iter(reader))
     return examples
 
 if args.phrase_alignments:
     reference_translations = None
     examples = get_examples_w_phrases(args.phrase_alignments)
 else:
-    reference_translations = [json.load(open('xnli-'+args.split+'-sentence1-reference-translations-en-head.json','r')),
-                              json.load(open('xnli-'+args.split+'-sentence2-reference-translations-en-head','r'))]
+    reference_translations = [
+        json.load(
+            open(
+                f'xnli-{args.split}-sentence1-reference-translations-en-head.json',
+                'r',
+            )
+        ),
+        json.load(
+            open(
+                f'xnli-{args.split}-sentence2-reference-translations-en-head',
+                'r',
+            )
+        ),
+    ]
+
     examples = get_examples(args.data, args.split)
     examples.reverse()
 
@@ -215,9 +228,13 @@ else:
 
 
     time_taken = time.time() - start
-    condition_name = 'seed-' + str(args.seed) + '.smp_lgs-' + str(args.sample_lgs) + '.smp_prob-'+ str(args.sample_prob)
+    condition_name = f'seed-{str(args.seed)}.smp_lgs-{str(args.sample_lgs)}.smp_prob-{str(args.sample_prob)}'
+
     combined_phrase_results = [ex for batch in phrase_results for ex in batch]
-    output_file_phrases = Path(output_path, args.split+'-extracted_phrases.' + condition_name + '.jsonl')
+    output_file_phrases = Path(
+        output_path, f'{args.split}-extracted_phrases.{condition_name}.jsonl'
+    )
+
     with jsonlines.open(output_file_phrases, mode='w') as writer:
         for result in tqdm(combined_phrase_results, desc='Writing output'):
             writer.write(result)
@@ -227,7 +244,11 @@ else:
 
 if not args.extract_phrases:
     results = [ex for batch in results for ex in batch]
-    output_path = Path(output_path, condition_name + '.ptb_prob-' + str(args.perturb_prob) + '.k-' + str(args.num_k))
+    output_path = Path(
+        output_path,
+        f'{condition_name}.ptb_prob-{str(args.perturb_prob)}.k-{str(args.num_k)}',
+    )
+
     output_path.mkdir(parents=True, exist_ok=True)
     if args.split == 'train':
         output_file = Path(output_path, 'train.tsv')

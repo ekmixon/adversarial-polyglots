@@ -45,7 +45,7 @@ class PolyglotActor(object):
                 example.label = 'contradiction'
             refs = [prem_refs, hypo_refs]
             prem, hypo, text_label, lg_counts, _, \
-            lowest_prem, lowest_hypo, lowest_text_label, lowest_lg_counts = self.polyglot.generate(example.text_a,
+                lowest_prem, lowest_hypo, lowest_text_label, lowest_lg_counts = self.polyglot.generate(example.text_a,
                                                                                            example.text_b,
                                                                                            example.label,
                                                                                            reference_translations=refs,
@@ -53,18 +53,18 @@ class PolyglotActor(object):
                                                                                            early_terminate=early_terminate)
             if sum(lg_counts.values()) > 0:
                 example.text_a = prem.replace(' ,', ',').replace(' .', '.')\
-                                     .replace(" '", "'").replace('( ', '(')\
-                                     .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
+                                         .replace(" '", "'").replace('( ', '(')\
+                                         .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
                 example.text_b = hypo.replace(' ,', ',').replace(' .', '.')\
-                                     .replace(" '", "'").replace('( ', '(')\
-                                     .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
+                                         .replace(" '", "'").replace('( ', '(')\
+                                         .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
 
                 example.text_a_lowest = lowest_prem.replace(' ,', ',').replace(' .', '.')\
-                                                   .replace(" '", "'").replace('( ', '(')\
-                                                   .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
+                                                       .replace(" '", "'").replace('( ', '(')\
+                                                       .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
                 example.text_b_lowest = lowest_hypo.replace(' ,', ',').replace(' .', '.')\
-                                                   .replace(" '", "'").replace('( ', '(')\
-                                                   .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
+                                                       .replace(" '", "'").replace('( ', '(')\
+                                                       .replace(' )', ')').replace(' ?', '?').replace(' !', '!')
 
                 example.adv_label = text_label
                 example.adv_label_lowest = lowest_text_label
